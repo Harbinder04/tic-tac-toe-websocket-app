@@ -8,7 +8,7 @@ const TicTacToe = () => {
 	const wsRef = useRef<WebSocket | null>(null);
 	const [board, setBoard] = useState(Array(9).fill(null));
 	const [gameId, setGameId] = useState('');
-	const [playerId, setPlayerId] = useState('');
+	let [playerId, setPlayerId] = useState('');
 	const [playerMark, setPlayerMark] = useState(null);
 	const [currentTurn, setCurrentTurn] = useState('X');
 	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED
@@ -134,19 +134,22 @@ const TicTacToe = () => {
 	};
 
 	const createGame = async () => {
+
 		if (!wsRef.current) {
 			connectWebSocket();
 		}
-
+		playerId = (Math.random() * 20).toString(36);
 		if (wsRef.current != null) {
 			wsRef.current.onopen = () => {
 				if (wsRef.current != null) {
 					wsRef.current.send(
 						JSON.stringify({
 							type: 'CREATE_GAME',
-							playerId,
+							playerId: playerId,
 						})
 					);
+
+					// todo: see the if we have to implement await here. log console.log(playerId);
 				} else {
 					setError('Websocket connection is not established');
 				}

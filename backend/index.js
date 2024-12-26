@@ -61,7 +61,7 @@ function handleCreateGame(ws, data) {
 			type: 'GAME_CREATED',
 			gameId,
 			playerId: data.playerId,
-			mark: 'X',
+			mark: 'X',  //Todo: check why this is being send.
 		})
 	);
 }
@@ -94,7 +94,7 @@ function handleJoinGame(ws, data) {
 		mark: 'O',
 		ws: ws,
 	};
-
+    console.log(playerData.id);
 	game.players.push(playerData);
 	game.status = 'PLAYING';
 	players.set(ws, {
