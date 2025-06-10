@@ -8,12 +8,14 @@ const TicTacToe = () => {
 	const wsRef = useRef<WebSocket | null>(null);
 	const [board, setBoard] = useState(Array(9).fill(null));
 	const [gameId, setGameId] = useState('');
-	let [playerId, setPlayerId] = useState('');
+	let [playerId, setPlayerId] = useState<string | null>(null);
 	const [playerMark, setPlayerMark] = useState(null);
-	const [currentTurn, setCurrentTurn] = useState('X');
+	const [currentTurn, setCurrentTurn] = useState<'X' | 'O' | null>(null);
 	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED
 	const [winner, setWinner] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [player1Id, setPlayer1Id] = useState<string | null>(null);
+	const [player2Id, setPlayer2Id] = useState<string | null>(null);
 
 	const CELL_SIZE = 150;
 	const CANVAS_SIZE = CELL_SIZE * 3;
@@ -68,23 +70,19 @@ const TicTacToe = () => {
 	};
 
 	// useEffect(() => {
-	// 	// Generate random player ID on mount
-	// 	setPlayerId(Math.random().toString(36).substring(2, 8));
-
 	// 	return () => {
-  //     // Close WebSocket connection on unmount
+	//     // Close WebSocket connection on unmount
 	// 		wsRef.current && wsRef.current.close();
 	// 	};
 	// }, [wsRef]);
 
-  const handleClickClose = () => {
-    wsRef.current && wsRef.current.close();
-  }
+	const handleClickClose = () => {
+		wsRef.current && wsRef.current.close();
+	};
 
 	useEffect(() => {
-    setPlayerId(Math.random().toString(36).substring(2, 8));
 		drawBoard();
-	}, [board, gameStatus, currentTurn]); // Redraw when board or game status changes
+	}, [board, gameStatus]); // Redraw when board or game status changes
 
 	const connectWebSocket = () => {
 		wsRef.current = new WebSocket('ws://localhost:8080');
@@ -96,18 +94,22 @@ const TicTacToe = () => {
 				case 'GAME_CREATED':
 					setGameId(data.gameId);
 					setPlayerMark(data.mark);
+					setCurrentTurn(data.currentTurn);
 					setGameStatus('WAITING');
 					break;
 
 				case 'GAME_STARTED':
 					setBoard(data.board);
+					setGameId(data.gameId);
+					setPlayerMark(data.playerMark);
 					setCurrentTurn(data.currentTurn);
-					setGameStatus('PLAYING');
+					setGameStatus(data.gameStatus);
 					break;
 
 				case 'GAME_UPDATE':
 					setBoard(data.board);
 					setCurrentTurn(data.currentTurn);
+					setPlayerId(data.nextPlayerId);
 					if (data.winner) {
 						setWinner(data.winner);
 						setGameStatus('FINISHED');
@@ -133,23 +135,25 @@ const TicTacToe = () => {
 		};
 	};
 
-	const createGame = async () => {
-
+	const createGame = () => {
 		if (!wsRef.current) {
 			connectWebSocket();
 		}
-		playerId = (Math.random() * 20).toString(36);
+		const generatedId = (Math.random() * 20).toString(36);
+		setPlayer1Id(generatedId);
+		setPlayerId(generatedId);
 		if (wsRef.current != null) {
 			wsRef.current.onopen = () => {
 				if (wsRef.current != null) {
 					wsRef.current.send(
 						JSON.stringify({
 							type: 'CREATE_GAME',
-							playerId: playerId,
+							player1Id: generatedId,
 						})
 					);
 
 					// todo: see the if we have to implement await here. log console.log(playerId);
+					console.log(generatedId);
 				} else {
 					setError('Websocket connection is not established');
 				}
@@ -163,7 +167,9 @@ const TicTacToe = () => {
 		if (!wsRef.current) {
 			connectWebSocket();
 		}
-
+		//Must have unique id
+		const generatedId = (Math.random() * 20).toString(36);
+		setPlayer2Id(generatedId);
 		if (wsRef.current != null) {
 			wsRef.current.onopen = () => {
 				if (wsRef.current != null) {
@@ -171,7 +177,7 @@ const TicTacToe = () => {
 						JSON.stringify({
 							type: 'JOIN_GAME',
 							gameId: gameIdToJoin,
-							playerId,
+							player2Id: generatedId,
 						})
 					);
 				} else {
@@ -184,29 +190,36 @@ const TicTacToe = () => {
 	};
 
 	const handleCanvasClick = (event: any) => {
-		if (gameStatus !== 'PLAYING' || currentTurn !== playerMark) return;
+		try {
+			if (gameStatus !== 'PLAYING' || currentTurn !== playerMark) return;
 
-		const canvas = canvasRef.current;
-		if (!canvas) return;
+			const canvas = canvasRef.current;
+			if (!canvas) return;
 
-		const rect = canvas.getBoundingClientRect();
-		const x = event.clientX - rect.left;
-		const y = event.clientY - rect.top;
+			const rect = canvas.getBoundingClientRect();
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
 
-		const cellX = Math.floor(x / CELL_SIZE);
-		const cellY = Math.floor(y / CELL_SIZE);
-		const cellIndex = cellY * 3 + cellX;
+			const cellX = Math.floor(x / CELL_SIZE);
+			const cellY = Math.floor(y / CELL_SIZE);
+			const cellIndex = cellY * 3 + cellX;
 
-		if (board[cellIndex] === null) {
-      wsRef.current &&
-			wsRef.current.send(
-				JSON.stringify({
-					type: 'MAKE_MOVE',
-					gameId,
-					position: cellIndex,
-					playerId,
-				})
-			);
+			if (board[cellIndex] === null) {
+				wsRef.current &&
+					wsRef.current.send(
+						JSON.stringify({
+							type: 'MAKE_MOVE',
+							gameId,
+							position: cellIndex,
+							player1Id,
+							player2Id,
+							currentplayerId: playerId,
+						})
+					);
+			}
+		} catch (error) {
+			console.error('Error handling canvas click:', error);
+			setError('An error occurred while making a move.');
 		}
 	};
 
@@ -263,9 +276,9 @@ const TicTacToe = () => {
 								{currentTurn === playerMark ? 'Your turn' : "Opponent's turn"}
 							</div>
 						)}
-            <div>
-              <Button onClick={handleClickClose}>Close Connection</Button>
-            </div>
+						<div>
+							<Button onClick={handleClickClose}>Close Connection</Button>
+						</div>
 					</div>
 				)}
 				{error && <div className='text-red-500 text-center mt-2'>{error}</div>}
