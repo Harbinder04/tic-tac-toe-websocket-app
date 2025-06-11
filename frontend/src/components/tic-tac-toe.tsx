@@ -7,15 +7,14 @@ const TicTacToe = () => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const wsRef = useRef<WebSocket | null>(null);
 	const [board, setBoard] = useState(Array(9).fill(null));
-	const [gameId, setGameId] = useState('');
+	const [gameId, setGameId] = useState<string>('');
 	let [playerId, setPlayerId] = useState<string | null>(null);
 	const [playerMark, setPlayerMark] = useState(null);
 	const [currentTurn, setCurrentTurn] = useState<'X' | 'O' | null>(null);
 	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED
 	const [winner, setWinner] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [player1Id, setPlayer1Id] = useState<string | null>(null);
-	const [player2Id, setPlayer2Id] = useState<string | null>(null);
+	const [copySuccess, setCopySuccess] = useState(false);
 
 	const CELL_SIZE = 150;
 	const CANVAS_SIZE = CELL_SIZE * 3;
@@ -140,7 +139,6 @@ const TicTacToe = () => {
 			connectWebSocket();
 		}
 		const generatedId = (Math.random() * 20).toString(36);
-		setPlayer1Id(generatedId);
 		setPlayerId(generatedId);
 		if (wsRef.current != null) {
 			wsRef.current.onopen = () => {
@@ -169,7 +167,6 @@ const TicTacToe = () => {
 		}
 		//Must have unique id
 		const generatedId = (Math.random() * 20).toString(36);
-		setPlayer2Id(generatedId);
 		if (wsRef.current != null) {
 			wsRef.current.onopen = () => {
 				if (wsRef.current != null) {
@@ -180,6 +177,7 @@ const TicTacToe = () => {
 							player2Id: generatedId,
 						})
 					);
+					console.log('player2Id', generatedId);
 				} else {
 					setError('Websocket connection is not established');
 				}
@@ -203,19 +201,18 @@ const TicTacToe = () => {
 			const cellX = Math.floor(x / CELL_SIZE);
 			const cellY = Math.floor(y / CELL_SIZE);
 			const cellIndex = cellY * 3 + cellX;
-
+			console.log('up playerId', playerId);
 			if (board[cellIndex] === null) {
-				wsRef.current &&
-					wsRef.current.send(
-						JSON.stringify({
-							type: 'MAKE_MOVE',
-							gameId,
-							position: cellIndex,
-							player1Id,
-							player2Id,
-							currentplayerId: playerId,
-						})
-					);
+				wsRef.current?.send(
+					JSON.stringify({
+						type: 'MAKE_MOVE',
+						gameId,
+						position: cellIndex,
+						currentplayerId: playerId,
+					})
+				);
+
+				console.log('playerId', playerId);
 			}
 		} catch (error) {
 			console.error('Error handling canvas click:', error);
@@ -223,6 +220,15 @@ const TicTacToe = () => {
 		}
 	};
 
+	const handleCopyClipboard = () => {
+		if (gameId) {
+			navigator.clipboard.writeText(gameId).then(() => {
+				setCopySuccess(true);
+			});
+		} else {
+			setError('Game ID not copied');
+		}
+	};
 	return (
 		<Card className='w-full max-w-md mx-auto'>
 			<CardHeader>
@@ -251,6 +257,13 @@ const TicTacToe = () => {
 						<p>Waiting for opponent to join...</p>
 						<p className='mt-2'>
 							Share this Game ID: <span className='font-bold'>{gameId}</span>
+							<Button
+								onClick={handleCopyClipboard}
+								className={`ml-2 ${
+									copySuccess ? 'bg-green-700 hover:bg-green-700' : ''
+								}`}>
+								{copySuccess ? 'Copied!' : 'Copy'}
+							</Button>
 						</p>
 					</div>
 				)}

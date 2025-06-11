@@ -1,6 +1,8 @@
 import { WebSocketServer } from 'ws';
 
-const server = new WebSocketServer({ port: 8080 });
+const server = new WebSocketServer({ port: 8080 }, () => {
+	console.log('WebSocket server is running on ws://localhost:8080');
+});
 
 const games = new Map();
 const players = new Map();
@@ -51,7 +53,7 @@ function handleCreateGame(ws, data) {
 		status: 'WAITING',
 	});
 
-	players.set(ws, {
+	players.set('player1Info', {
 		gameId,
 		playerId: data.player1Id,
 	});
@@ -99,7 +101,8 @@ function handleJoinGame(ws, data) {
 		console.log(playerData.id);
 		game.players.push(playerData);
 		game.status = 'PLAYING';
-		players.set(ws, {
+
+		players.set('player2Info', {
 			gameId: data.gameId,
 			playerId: data.player2Id,
 		});
@@ -127,6 +130,8 @@ function handleMove(ws, data) {
 	const game = games.get(data.gameId);
 	if (!game) return;
 
+	const player1Id = players.get('player1Info').playerId;
+	const player2Id = players.get('player2Info').playerId;
 	const player = game.players.find(
 		(p) => p.ws === ws && p.id === data.currentplayerId
 	);
@@ -137,8 +142,7 @@ function handleMove(ws, data) {
 	game.currentTurn = player.mark === 'X' ? 'O' : 'X';
 
 	//update player turn
-	const nextPlayerId =
-		player.id === data.player1Id ? data.player2Id : data.player1Id;
+	const nextPlayerId = player.id === player1Id ? player2Id : player1Id;
 	// Check for winner
 	const winner = checkWinner(game.board);
 	if (winner || isBoardFull(game.board)) {
