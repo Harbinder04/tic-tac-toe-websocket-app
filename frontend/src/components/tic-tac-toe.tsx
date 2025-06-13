@@ -11,14 +11,14 @@ const TicTacToe = () => {
 	let [playerId, setPlayerId] = useState<string | null>(null);
 	const [playerMark, setPlayerMark] = useState(null);
 	const [currentTurn, setCurrentTurn] = useState<'X' | 'O' | null>(null);
-	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED
+	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED, LEFT
 	const [winner, setWinner] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [copySuccess, setCopySuccess] = useState(false);
 
 	const CELL_SIZE = 150;
 	const CANVAS_SIZE = CELL_SIZE * 3;
-	const GRID_COLOR = '#333';
+	const GRID_COLOR = '#0DA192';
 	const STROKE_WIDTH = 5;
 
 	// Drawing function
@@ -62,7 +62,8 @@ const TicTacToe = () => {
 				ctx.textAlign = 'center';
 				ctx.textBaseline = 'middle';
 
-				ctx.fillStyle = cell === 'X' ? 'blue' : 'red';
+				ctx.fillStyle =
+					cell === 'X' ? 'rgb(244, 244, 244)' : 'rgb(255, 255, 0)';
 				ctx.fillText(cell, x, y);
 			}
 		});
@@ -70,14 +71,10 @@ const TicTacToe = () => {
 
 	// useEffect(() => {
 	// 	return () => {
-	//     // Close WebSocket connection on unmount
+	// 		// Close WebSocket connection on unmount
 	// 		wsRef.current && wsRef.current.close();
 	// 	};
 	// }, [wsRef]);
-
-	const handleClickClose = () => {
-		wsRef.current && wsRef.current.close();
-	};
 
 	useEffect(() => {
 		drawBoard();
@@ -120,7 +117,7 @@ const TicTacToe = () => {
 
 				case 'PLAYER_LEFT':
 					setError('Other player left the game');
-					setGameStatus('FINISHED');
+					setGameStatus('LEFT');
 					break;
 
 				case 'ERROR':
@@ -211,13 +208,29 @@ const TicTacToe = () => {
 						currentplayerId: playerId,
 					})
 				);
-
-				console.log('playerId', playerId);
 			}
 		} catch (error) {
 			console.error('Error handling canvas click:', error);
 			setError('An error occurred while making a move.');
 		}
+	};
+
+	const handleClickClose = () => {
+		setGameStatus('LEFT');
+		setWinner(null);
+		setBoard(Array(9).fill(null));
+		setPlayerMark(null);
+		setCurrentTurn(null);
+		setError('Connection Closed you left the game');
+		console.log('gameID', gameId);
+		wsRef.current?.send(
+			JSON.stringify({
+				type: 'LEAVE_GAME',
+				gameId: gameId,
+				// currentplayerId: playerId,
+			})
+		);
+		wsRef.current && wsRef.current.close();
 	};
 
 	const handleCopyClipboard = () => {
@@ -231,7 +244,7 @@ const TicTacToe = () => {
 	};
 	return (
 		<Card className='w-full max-w-md mx-auto'>
-			<CardHeader>
+			<CardHeader className='text-center'>
 				<CardTitle>Multiplayer Tic Tac Toe</CardTitle>
 			</CardHeader>
 			<CardContent className='flex flex-col items-center'>
@@ -242,10 +255,12 @@ const TicTacToe = () => {
 						</Button>
 						<div className='flex space-x-2'>
 							<Input
+								name='Game ID'
 								placeholder='Enter Game ID'
 								value={gameId}
 								onChange={(e) => setGameId(e.target.value)}
 								className='flex-1'
+								autoFocus
 							/>
 							<Button onClick={() => joinGame(gameId)}>Join Game</Button>
 						</div>
@@ -269,20 +284,35 @@ const TicTacToe = () => {
 				)}
 
 				{(gameStatus === 'PLAYING' || gameStatus === 'FINISHED') && (
-					<div className='flex flex-col items-center'>
+					<div className='relative flex flex-col items-center'>
 						<canvas
 							ref={canvasRef}
 							width={CANVAS_SIZE}
 							height={CANVAS_SIZE}
 							onClick={handleCanvasClick}
-							className='cursor-pointer mb-4 border border-gray-200 rounded'
+							className={`bg-[#26cfbe] cursor-pointer mb-4 border border-gray-200 rounded ${
+								gameStatus === 'FINISHED' ? 'opacity-50' : ''
+							} transition-opacity duration-300`}
 						/>
 
 						{winner ? (
-							<div className='text-center mb-4 text-lg font-semibold'>
-								{winner === 'DRAW'
-									? 'Game ended in a Draw!'
-									: `Player ${winner} Wins!`}
+							<div
+								className={`${
+									gameStatus === 'FINISHED'
+										? 'absolute top-[45%] text-wrap font-bold text-4xl backdrop-blur-sm'
+										: ''
+								} text-center mb-4`}>
+								{winner === 'DRAW' ? (
+									<div>
+										<span className='text-red-600'>Game ended in a Draw!</span>
+										<br />
+									</div>
+								) : (
+									<div>
+										Player <span className='text-green-600'>{winner}</span>{' '}
+										Wins!
+									</div>
+								)}
 							</div>
 						) : (
 							<div className='text-center mb-4 text-lg'>
@@ -294,7 +324,19 @@ const TicTacToe = () => {
 						</div>
 					</div>
 				)}
-				{error && <div className='text-red-500 text-center mt-2'>{error}</div>}
+				{gameStatus === 'LEFT' ? (
+					<>
+						<div className='text-red-500 text-center mt-2'>{error}</div>
+						<Button onClick={() => window.location.reload()} className='mt-4'>
+							Restart
+						</Button>
+					</>
+				) : (
+					<></>
+				)}
+				{error && gameStatus !== 'LEFT' && (
+					<div className='text-red-500 text-center mt-2'>{error}</div>
+				)}
 			</CardContent>
 		</Card>
 	);
