@@ -6,6 +6,7 @@ const server = new WebSocketServer({ port: 8080 }, () => {
 
 const games = new Map();
 const players = new Map();
+const PlayerInfo = new Map();
 
 server.on('connection', (ws) => {
 	console.log('New connection');
@@ -24,10 +25,11 @@ server.on('connection', (ws) => {
 				handleMove(ws, data);
 				break;
 			case 'LEAVE_GAME':
-				handleLeaveGame(ws, data);
+				handleExitGame(ws, data);
 				break;
 		}
 	});
+
 	ws.on('close', () => {
 		handlePlayerDisconnect(ws);
 	});
@@ -57,6 +59,12 @@ function handleCreateGame(ws, data) {
 		gameId,
 		playerId: data.player1Id,
 	});
+
+	PlayerInfo.set(ws, {
+		gameId: gameId,
+		playerId: data.player1Id,
+	});
+
 	// send the current status through websocket
 	ws.send(
 		JSON.stringify({
@@ -98,11 +106,16 @@ function handleJoinGame(ws, data) {
 			mark: 'O',
 			ws: ws,
 		};
-		console.log(playerData.id);
+
 		game.players.push(playerData);
 		game.status = 'PLAYING';
 
 		players.set('player2Info', {
+			gameId: data.gameId,
+			playerId: data.player2Id,
+		});
+
+		PlayerInfo.set(ws, {
 			gameId: data.gameId,
 			playerId: data.player2Id,
 		});
@@ -164,10 +177,36 @@ function handleMove(ws, data) {
 	});
 }
 
-function handleLeaveGame(ws, data) {
-	const playerData = players.get(ws);
-	if (!playerData) return;
+function handleExitGame(ws, data) {
+	// const playerData = players.get(ws);
+	// if (!playerData) return;
+	if (!data || !data.gameId) {
+		console.warn('handleLeaveGame called with invalid data:', data);
+		return;
+	}
 
+	const game = games.get(data.gameId);
+	if (!game) return;
+
+	// Notify other player
+	const otherPlayer = game.players.find((p) => p.ws !== ws);
+
+	if (otherPlayer) {
+		otherPlayer.ws.send(
+			JSON.stringify({
+				type: 'PLAYER_LEFT',
+				gameId: data.gameId,
+			})
+		);
+	}
+	games.delete(data.gameId);
+	players.delete(players);
+}
+
+function handleLeaveGame(ws) {
+	const playerData = PlayerInfo.get(ws);
+	if (!playerData) return;
+	console.log('Player data:', playerData);
 	const game = games.get(playerData.gameId);
 	if (!game) return;
 
@@ -182,7 +221,9 @@ function handleLeaveGame(ws, data) {
 		);
 	}
 	games.delete(playerData.gameId);
-	players.delete(ws);
+	players.delete('player1Info', 'player2Info');
+	PlayerInfo.delete(ws);
+	ws.close();
 }
 
 function handlePlayerDisconnect(ws) {
@@ -203,7 +244,7 @@ function checkWinner(board) {
 
 	for (let [a, b, c] of lines) {
 		if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-			return board[a]; // Return the playerId of the winner
+			return board[a]; // Return the winning mark ('X' or 'O')
 		}
 	}
 	return null;
