@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ const TicTacToe = () => {
 	const wsRef = useRef<WebSocket | null>(null);
 	const [board, setBoard] = useState(Array(9).fill(null));
 	const [gameId, setGameId] = useState<string>('');
-	let [playerId, setPlayerId] = useState<string | null>(null);
+	const [playerId, setPlayerId] = useState<string | null>(null);
 	const [playerMark, setPlayerMark] = useState(null);
 	const [currentTurn, setCurrentTurn] = useState<'X' | 'O' | null>(null);
 	const [gameStatus, setGameStatus] = useState('INIT'); // INIT, WAITING, PLAYING, FINISHED, LEFT
@@ -22,7 +22,7 @@ const TicTacToe = () => {
 	const STROKE_WIDTH = 5;
 
 	// Drawing function
-	const drawBoard = () => {
+	const drawBoard = useCallback(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return; // Guard clause for null canvas
 
@@ -67,18 +67,11 @@ const TicTacToe = () => {
 				ctx.fillText(cell, x, y);
 			}
 		});
-	};
-
-	// useEffect(() => {
-	// 	return () => {
-	// 		// Close WebSocket connection on unmount
-	// 		wsRef.current && wsRef.current.close();
-	// 	};
-	// }, [wsRef]);
+	}, [board, GRID_COLOR, STROKE_WIDTH, CANVAS_SIZE, CELL_SIZE]);
 
 	useEffect(() => {
 		drawBoard();
-	}, [board, gameStatus]); // Redraw when board or game status changes
+	}, [board, gameStatus, drawBoard]); // Redraw when board or game status changes
 
 	const connectWebSocket = () => {
 		wsRef.current = new WebSocket('ws://localhost:8080');
@@ -146,9 +139,6 @@ const TicTacToe = () => {
 							player1Id: generatedId,
 						})
 					);
-
-					// todo: see the if we have to implement await here. log console.log(playerId);
-					console.log(generatedId);
 				} else {
 					setError('Websocket connection is not established');
 				}
@@ -174,7 +164,7 @@ const TicTacToe = () => {
 							player2Id: generatedId,
 						})
 					);
-					console.log('player2Id', generatedId);
+					// console.log('player2Id', generatedId);
 				} else {
 					setError('Websocket connection is not established');
 				}
@@ -184,7 +174,12 @@ const TicTacToe = () => {
 		}
 	};
 
-	const handleCanvasClick = (event: any) => {
+	interface CanvasClickEvent extends React.MouseEvent<HTMLCanvasElement> {
+		clientX: number;
+		clientY: number;
+	}
+
+	const handleCanvasClick = (event: CanvasClickEvent) => {
 		try {
 			if (gameStatus !== 'PLAYING' || currentTurn !== playerMark) return;
 
@@ -227,10 +222,12 @@ const TicTacToe = () => {
 			JSON.stringify({
 				type: 'LEAVE_GAME',
 				gameId: gameId,
-				// currentplayerId: playerId,
 			})
 		);
-		wsRef.current && wsRef.current.close();
+
+		if (wsRef.current) {
+			wsRef.current.close();
+		}
 	};
 
 	const handleCopyClipboard = () => {
