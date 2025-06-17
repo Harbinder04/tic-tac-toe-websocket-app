@@ -23,7 +23,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          file: ./Dockerfile/Dockerfile.frontendApp
+          file: ./Dockerfiles/Dockerfile.frontendApp
           push: true
           tags: harbinder04/tic-tac-toe-frontend:latest
 
@@ -31,7 +31,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: ./Dockerfile/Dockerfile.backendApp
+          file: ./Dockerfiles/Dockerfile.backendApp
           push: true
           tags: harbinder04/tic-tac-toe-backend:latest
 
