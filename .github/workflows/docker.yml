@@ -7,11 +7,11 @@ on:
       - completed
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -20,7 +20,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push frontend Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./Dockerfile/Dockerfile.frontendApp
@@ -28,9 +28,12 @@ jobs:
           tags: harbinder04/tic-tac-toe-frontend:latest
 
       - name: Build and push backend Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./Dockerfile/Dockerfile.backendApp
           push: true
           tags: harbinder04/tic-tac-toe-backend:latest
+
+      - name: Verify Pushed Images
+        run: docker pull harbinder04/tic-tac-toe-frontend:latest && docker pull harbinder04/tic-tac-toe-backend:latest
