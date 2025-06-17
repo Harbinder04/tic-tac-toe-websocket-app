@@ -1,13 +1,13 @@
-name: Build
+name: Lint
 
 on:
-  workflow_run:
-    workflow: ['Lint']
-    types: [completed]
+  pull_request:
+  push:
     branches:
       - master
+
 jobs:
-  build:
+  eslint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,4 +21,8 @@ jobs:
           node-version: 22
 
       - run: npm install
-      - run: npm run build
+      - uses: sibiraj-s/action-eslint@v3
+        with:
+          eslint-args: '--ignore-path=.gitignore --quiet'
+          extensions: 'ts,tsx'
+          annotations: true
