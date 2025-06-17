@@ -1,11 +1,11 @@
 # Fun Project to learn about WebSockets
- In this project, I am exploring how the WebSockets work and I will try to deploy it using k8s.  
+ In this project, I am exploring how the WebSockets work and I will deploy it using modern tools like EKS, Terraform and Github actions.  
  ### Deployment Tech Stack
    <p>
      <ul>
        <li>Docker</li>
-       <li>K8s</li>
-       <li>Amazon Elastic Kubernetes Service</li>
+       <li>Terraform</li>
+       <li>EKS</li>
      </ul>
    </p>
 
