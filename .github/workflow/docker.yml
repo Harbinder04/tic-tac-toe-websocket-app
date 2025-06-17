@@ -1,0 +1,37 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_run:
+    workflow: ['Build']
+    types: [completed]
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: ./frontend
+          file: ./Dockerfile/Dockerfile.frontendApp
+          push: true
+          tags: harbinder04/tic-tac-toe-frontend:latest
+
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: ./backend
+          file: ./Dockerfile/Dockerfile.backendApp
+          push: true
+          tags: harbinder04/tic-tac-toe-backend:latest

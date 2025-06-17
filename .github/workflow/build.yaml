@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  workflow_run:
+    workflow: ['Lint']
+    types: [completed]
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install
+      - run: npm run build
