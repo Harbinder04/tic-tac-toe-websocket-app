@@ -1,16 +1,13 @@
 import { WebSocketServer } from 'ws';
 
-const server = new WebSocketServer({ port: 8080 }, () => {
-	console.log('WebSocket server is running on ws://localhost:8080');
+const server = new WebSocketServer({ path: '/api', port: 8080 }, () => {
+	console.log('WebSocket server is running on port: 8080');
 });
 
 const games = new Map();
 const players = new Map();
-// const PlayerInfo = new Map();
 
 server.on('connection', (ws) => {
-	console.log('New connection');
-	//?? where we are getting this message from.
 	ws.on('message', (message) => {
 		const data = JSON.parse(message);
 
@@ -59,11 +56,6 @@ function handleCreateGame(ws, data) {
 		gameId,
 		playerId: data.player1Id,
 	});
-
-	// PlayerInfo.set(ws, {
-	// 	gameId: gameId,
-	// 	playerId: data.player1Id,
-	// });
 
 	// send the current status through websocket
 	ws.send(
@@ -115,11 +107,6 @@ function handleJoinGame(ws, data) {
 			playerId: data.player2Id,
 		});
 
-		// PlayerInfo.set(ws, {
-		// 	gameId: data.gameId,
-		// 	playerId: data.player2Id,
-		// });
-
 		// Notify both players that game is starting
 		game.players.forEach((player) => {
 			player.ws.send(
@@ -147,12 +134,6 @@ function handleMove(ws, data) {
 	// const player2Id = players.get('player2Info').playerId;
 	const player2Id = game.players.find((p) => p.id !== player1Id).id;
 
-	//❓❓
-	// if (!player2Id) {
-	// 	console.warn('Player 2 not found for game:', data.gameId);
-	// 	handleLeaveGame(ws);
-	// 	return;
-	// }
 	const player = game.players.find(
 		(p) => p.ws === ws && p.id === data.currentplayerId
 	);
@@ -214,7 +195,7 @@ function handleExitGame(ws, data) {
 function handleLeaveGame(ws) {
 	const playerData = players.get(ws);
 	if (!playerData) return;
-	console.log('Player data:', playerData);
+	// console.log('Player data:', playerData);
 	const game = games.get(playerData.gameId);
 	if (!game) return;
 
