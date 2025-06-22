@@ -1,4 +1,15 @@
 import { WebSocketServer } from 'ws';
+import http from 'http';
+
+const health = http.createServer((req, res) => {
+	if (req.url === '/health') {
+		res.writeHead(200);
+		res.end('OK');
+	} else {
+		res.writeHead(404);
+		res.end();
+	}
+});
 
 const server = new WebSocketServer({ path: '/api', port: 8080 }, () => {
 	console.log('WebSocket server is running on port: 8080');
