@@ -164,7 +164,6 @@ const TicTacToe = () => {
 							player2Id: generatedId,
 						})
 					);
-					// console.log('player2Id', generatedId);
 				} else {
 					setError('Websocket connection is not established');
 				}
