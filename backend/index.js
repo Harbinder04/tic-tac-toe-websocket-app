@@ -1,50 +1,84 @@
 import { WebSocketServer } from 'ws';
 import http from 'http';
 
-const health = http.createServer((req, res) => {
+// Create HTTP server that handles both health checks and WebSocket upgrades
+const server = http.createServer((req, res) => {
+	// Handle health check endpoint
 	if (req.url === '/health') {
-		res.writeHead(200);
-		res.end('OK');
-	} else {
-		res.writeHead(404);
-		res.end();
+		res.writeHead(200, { 'Content-Type': 'application/json' });
+		res.end(
+			JSON.stringify({
+				status: 'healthy',
+				timestamp: new Date().toISOString(),
+			})
+		);
+		return;
 	}
+	// 404 for other paths
+	res.writeHead(404, { 'Content-Type': 'text/plain' });
+	res.end('Not Found');
 });
 
-const server = new WebSocketServer({ path: '/api', port: 8080 }, () => {
-	console.log('WebSocket server is running on port: 8080');
+// Create WebSocket server using the same HTTP server
+const wss = new WebSocketServer({
+	server: server,
+	path: '/api', // WebSocket connections on /api path
 });
 
 const games = new Map();
 const players = new Map();
 
-server.on('connection', (ws) => {
-	ws.on('message', (message) => {
-		const data = JSON.parse(message);
+// Start the server on port 8080
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
+	console.log(`Server running on port ${PORT}`);
+	console.log(`Health check: http://localhost:${PORT}/health`);
+	console.log(`WebSocket endpoint: ws://localhost:${PORT}/api`);
+});
 
-		switch (data.type) {
-			case 'CREATE_GAME':
-				handleCreateGame(ws, data);
-				break;
-			case 'JOIN_GAME':
-				handleJoinGame(ws, data);
-				break;
-			case 'MAKE_MOVE':
-				handleMove(ws, data);
-				break;
-			case 'LEAVE_GAME':
-				handleExitGame(ws, data);
-				break;
+wss.on('connection', (ws) => {
+	// console.log('New WebSocket connection established');
+
+	ws.on('message', (message) => {
+		try {
+			const data = JSON.parse(message);
+
+			switch (data.type) {
+				case 'CREATE_GAME':
+					handleCreateGame(ws, data);
+					break;
+				case 'JOIN_GAME':
+					handleJoinGame(ws, data);
+					break;
+				case 'MAKE_MOVE':
+					handleMove(ws, data);
+					break;
+				case 'LEAVE_GAME':
+					handleExitGame(ws, data);
+					break;
+			}
+		} catch (error) {
+			console.error('Error parsing message:', error);
+			ws.send(
+				JSON.stringify({
+					type: 'ERROR',
+					message: 'Invalid message format',
+				})
+			);
 		}
 	});
 
 	ws.on('close', () => {
 		handlePlayerDisconnect(ws);
 	});
+
+	ws.on('error', (error) => {
+		console.error('WebSocket error:', error);
+	});
 });
 
 function generateGameId() {
-	return (Math.random() * 10).toString(36).slice(2, 8); // Random 6 character string (0-9, a-z) e.g. 'x8k3z9'
+	return Math.random().toString(36).substring(2, 8); // Random 6 character string
 }
 
 function handleCreateGame(ws, data) {
@@ -78,6 +112,8 @@ function handleCreateGame(ws, data) {
 			currentTurn: 'X',
 		})
 	);
+
+	// console.log(`Game created: ${gameId} by player: ${data.player1Id}`);
 }
 
 function handleJoinGame(ws, data) {
@@ -94,7 +130,7 @@ function handleJoinGame(ws, data) {
 			return;
 		}
 
-		if (game.players.length == 2) {
+		if (game.players.length >= 2) {
 			ws.send(
 				JSON.stringify({
 					type: 'ERROR',
@@ -103,7 +139,7 @@ function handleJoinGame(ws, data) {
 			);
 			return;
 		}
-		//to check: isn't the playerId same for both players.
+
 		const playerData = {
 			id: data.player2Id,
 			mark: 'O',
@@ -131,31 +167,74 @@ function handleJoinGame(ws, data) {
 				})
 			);
 		});
-		// console.log(game.currentTurn);
 	} catch (error) {
-		console.error(error);
+		console.error('Error in handleJoinGame:', error);
+		ws.send(
+			JSON.stringify({
+				type: 'ERROR',
+				message: 'Failed to join game',
+			})
+		);
 	}
 }
 
 function handleMove(ws, data) {
 	const game = games.get(data.gameId);
-	if (!game) return;
+	if (!game) {
+		ws.send(
+			JSON.stringify({
+				type: 'ERROR',
+				message: 'Game not found',
+			})
+		);
+		return;
+	}
 
-	const player1Id = players.get(ws).playerId;
-	// const player2Id = players.get('player2Info').playerId;
-	const player2Id = game.players.find((p) => p.id !== player1Id).id;
+	const playerInfo = players.get(ws);
+	if (!playerInfo) {
+		ws.send(
+			JSON.stringify({
+				type: 'ERROR',
+				message: 'Player not found',
+			})
+		);
+		return;
+	}
 
-	const player = game.players.find(
-		(p) => p.ws === ws && p.id === data.currentplayerId
-	);
-	if (!player || game.currentTurn !== player.mark) return;
+	const player = game.players.find((p) => p.ws === ws);
+	if (!player || game.currentTurn !== player.mark) {
+		ws.send(
+			JSON.stringify({
+				type: 'ERROR',
+				message: 'Not your turn',
+			})
+		);
+		return;
+	}
+
+	// Check if position is valid and empty
+	if (
+		data.position < 0 ||
+		data.position > 8 ||
+		game.board[data.position] !== null
+	) {
+		ws.send(
+			JSON.stringify({
+				type: 'ERROR',
+				message: 'Invalid move',
+			})
+		);
+		return;
+	}
 
 	// Update board
 	game.board[data.position] = player.mark;
 	game.currentTurn = player.mark === 'X' ? 'O' : 'X';
 
-	//update player turn
-	const nextPlayerId = player.id === player1Id ? player2Id : player1Id;
+	// Get other player ID
+	const otherPlayer = game.players.find((p) => p.ws !== ws);
+	const nextPlayerId = otherPlayer ? otherPlayer.id : null;
+
 	// Check for winner
 	const winner = checkWinner(game.board);
 	if (winner || isBoardFull(game.board)) {
@@ -172,16 +251,15 @@ function handleMove(ws, data) {
 				currentTurn: game.currentTurn,
 				winner: winner,
 				isDraw: !winner && isBoardFull(game.board),
+				gameStatus: game.status,
 			})
 		);
 	});
 }
 
 function handleExitGame(ws, data) {
-	// const playerData = players.get(ws);
-	// if (!playerData) return;
 	if (!data || !data.gameId) {
-		console.warn('handleLeaveGame called with invalid data:', data);
+		console.warn('handleExitGame called with invalid data:', data);
 		return;
 	}
 
@@ -199,16 +277,21 @@ function handleExitGame(ws, data) {
 			})
 		);
 	}
+
 	games.delete(data.gameId);
-	players.delete(players);
+	players.delete(ws);
+	// console.log(`Player left game: ${data.gameId}`);
 }
 
 function handleLeaveGame(ws) {
 	const playerData = players.get(ws);
 	if (!playerData) return;
-	// console.log('Player data:', playerData);
+
 	const game = games.get(playerData.gameId);
-	if (!game) return;
+	if (!game) {
+		players.delete(ws);
+		return;
+	}
 
 	// Notify other player
 	const otherPlayer = game.players.find((p) => p.ws !== ws);
@@ -220,9 +303,10 @@ function handleLeaveGame(ws) {
 			})
 		);
 	}
+
 	games.delete(playerData.gameId);
 	players.delete(ws);
-	ws.close();
+	// console.log(`Player disconnected from game: ${playerData.gameId}`);
 }
 
 function handlePlayerDisconnect(ws) {
