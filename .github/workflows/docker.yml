@@ -28,6 +28,8 @@ jobs:
         with:
           context: ./frontend
           file: ./Dockerfiles/Dockerfile.frontendApp
+          build-args: |
+            VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
           push: true
           tags: harbinder04/tic-tac-toe-frontend:latest
 
