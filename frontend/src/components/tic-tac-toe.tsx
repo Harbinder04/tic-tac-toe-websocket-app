@@ -74,7 +74,10 @@ const TicTacToe = () => {
 	}, [board, gameStatus, drawBoard]); // Redraw when board or game status changes
 
 	const connectWebSocket = () => {
-		wsRef.current = new WebSocket('ws://mygame.harbinder.tech/api');
+		// console.log(import.meta.env.VITE_BACKEND_URL);
+		wsRef.current = new WebSocket(
+			import.meta.env.VITE_BACKEND_URL || 'ws://localhost:8080/api'
+		);
 
 		wsRef.current.onmessage = (event) => {
 			const data = JSON.parse(event.data);
