@@ -1,19 +1,34 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: tic-tac-toe-ingress
+  name: ingress
   annotations:
+    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn:
+      { { .Values.ingress.certificateArn } }
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
 spec:
-  ingressClassName: nginx
+  ingressClassName: alb
   rules:
+    - host: mygame.harbinder.tech
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: b-svc
+                port:
+                  number: 8080
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: tic-tac-toe-service
+                name: f-svc
                 port:
-                  number: 80
+                  number: 3000
