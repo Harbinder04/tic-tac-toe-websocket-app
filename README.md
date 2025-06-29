@@ -3,7 +3,7 @@ This is a simple multiplayer **Tic Tac Toe** game built with **WebSockets** and 
 It's a fun project where I explored real-time communication and Kubernetes.
 
  
-## 📺 Working Demo project:
+## 📺 Deployed project:
 [Project Video](https://github.com/user-attachments/assets/b8f43483-98f4-49c4-bca6-b29fcf8dc736)
 
 
