@@ -1,19 +1,34 @@
-# Fun Project to learn about WebSockets
- In this project, I am exploring how the WebSockets work and I will deploy it using modern tools like EKS, Terraform and Github actions.  
- ### Deployment Tech Stack
-   <p>
-     <ul>
-       <li>Docker</li>
-       <li>Terraform</li>
-       <li>EKS</li>
-     </ul>
-   </p>
+# Fun Project to learn about WebSockets & High level cloud concepts
+This is a simple multiplayer **Tic Tac Toe** game built with **WebSockets** and deployed on **AWS EKS**.  
+It's a fun project where I explored real-time communication and Kubernetes.
 
-## Screenshots of the project 
-<img src="https://github.com/user-attachments/assets/a548c6a6-097b-4191-b776-17b19cc6bbdb" alt="Image 1" width="600" height="250">  
-</br>
-<img src="https://github.com/user-attachments/assets/08bcb4f3-252d-4f8b-9cb3-11fcd5874724" alt="Image 2" width="300">  
+ 
+## 📺 Working Demo project:
+[Project Video](https://github.com/user-attachments/assets/b8f43483-98f4-49c4-bca6-b29fcf8dc736)
 
-<img src="https://github.com/user-attachments/assets/4d17414a-d747-4991-8c60-600221c2b02c" alt="Image 3" width="300"> 
-</br>
-<img src="https://github.com/user-attachments/assets/6cfa68a3-c4ad-447a-8791-e50cef01748a" alt="Image 3" width="600" height="700"> 
+
+ ### ☁️ Cloud & Deployment
+- **Docker** (containerization)
+- **AWS EKS** (Kubernetes on AWS)
+- **AWS ALB (Application Load Balancer)**
+- **AWS Certificate Manager** (for HTTPS/TLS)
+- **GitHub Actions** (CI/CD)
+
+## 🛠️ How to Run Locally 
+   Make sure you have **Node.js** installed. Then,
+
+   i) clone this project
+   
+   ```bash
+    git clone https://github.com/Harbinder04/tic-tac-toe-websocket-app.git
+   ```
+
+   ii) Install dependencies for backend and frontend by
+
+   ```bash
+    npm install
+   ```
+
+  iii) Project should run by typing  `npm start`  for backend and `npm run dev` for frontend.
+
+   **Made with ❤️ by Harbinder Singh**
